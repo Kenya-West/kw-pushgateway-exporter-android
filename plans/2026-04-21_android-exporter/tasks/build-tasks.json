@@ -1,0 +1,32 @@
+[
+  {
+    "content": "[scaffold] Project build system, manifest, application class, .gitignore",
+    "id": "1",
+    "status": "completed"
+  },
+  {
+    "content": "[core] Model classes, config, identity, serializer, transport client",
+    "id": "2",
+    "status": "completed"
+  },
+  {
+    "content": "[collectors] All 13 metric collectors + registry",
+    "id": "3",
+    "status": "completed"
+  },
+  {
+    "content": "[scheduler] JobScheduler service, boot receiver, scheduler manager",
+    "id": "4",
+    "status": "completed"
+  },
+  {
+    "content": "[ui] Compose UI screens, viewmodels, navigation, theme",
+    "id": "5",
+    "status": "in_progress"
+  },
+  {
+    "content": "[finalize] Git commit, verify build, test plan",
+    "id": "6",
+    "status": "pending"
+  }
+]
