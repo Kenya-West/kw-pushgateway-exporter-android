@@ -32,6 +32,14 @@ fun MainScreen(navController: NavController, viewModel: MainViewModel = viewMode
 
     LaunchedEffect(Unit) { viewModel.refreshState() }
 
+    val application = context.applicationContext as com.kw.pushgatewayexporter.PushgatewayExporterApp
+    val showReliabilityReminder = remember(state.schedulingEnabled, state.lastPushResult) {
+        application.reliabilityManager.shouldShowReminder()
+    }
+    LaunchedEffect(showReliabilityReminder) {
+        if (showReliabilityReminder) application.reliabilityManager.preferences.markReminderShown()
+    }
+
     // Auto-open dialog the first time a TLS trust-anchor error appears.
     LaunchedEffect(state.hasTlsTrustAnchorError, state.lastPushResult?.timestampMillis) {
         if (state.hasTlsTrustAnchorError) showTlsDialog = true
@@ -82,6 +90,36 @@ fun MainScreen(navController: NavController, viewModel: MainViewModel = viewMode
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            // Reliability reminder banner
+            if (showReliabilityReminder) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                    )
+                ) {
+                    Column(Modifier.padding(16.dp)) {
+                        Text(
+                            "Background reliability not fully configured",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                        Text(
+                            "Your device may stop the exporter in the background. Finish the " +
+                                "reliability checklist to improve continuity.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Button(onClick = { navController.navigate("reliability") }) {
+                            Icon(Icons.Default.Shield, contentDescription = null)
+                            Spacer(Modifier.width(4.dp))
+                            Text("Open checklist")
+                        }
+                    }
+                }
+            }
+
             // Connection status card
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
@@ -239,6 +277,28 @@ fun MainScreen(navController: NavController, viewModel: MainViewModel = viewMode
                     Icon(Icons.Default.Code, contentDescription = null)
                     Spacer(Modifier.width(4.dp))
                     Text("Samples")
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                OutlinedButton(
+                    onClick = { navController.navigate("reliability") },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(Icons.Default.Shield, contentDescription = null)
+                    Spacer(Modifier.width(4.dp))
+                    Text("Reliability")
+                }
+                OutlinedButton(
+                    onClick = { navController.navigate("diagnostics") },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(Icons.Default.BugReport, contentDescription = null)
+                    Spacer(Modifier.width(4.dp))
+                    Text("Diagnostics")
                 }
             }
 

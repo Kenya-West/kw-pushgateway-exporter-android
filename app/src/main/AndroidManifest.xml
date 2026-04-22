@@ -14,6 +14,22 @@
     <!-- Required: Re-schedule jobs and start exporter after device reboot -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
+    <!-- Required for the reliability foreground service (API 28+). Older APIs treat this
+         as a no-op. We never declare a "specific type" foreground service permission
+         because the exporter does not fit FGS_TYPE_LOCATION, MEDIA, etc. On API 34+ apps
+         declaring a foreground service must also declare a type; see the service element
+         below. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission
+        android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"
+        tools:targetApi="34" />
+
+    <!-- Optional: Post notifications on API 33+. Reliability mode surfaces a persistent
+         notification — recent Android asks for runtime consent. -->
+    <uses-permission
+        android:name="android.permission.POST_NOTIFICATIONS"
+        tools:targetApi="33" />
+
     <!-- Optional: Telephony operator info; only if user enables telephony metrics.
          This is a dangerous permission on API 23+ but normal on API 21-22. -->
     <!-- <uses-permission android:name="android.permission.READ_PHONE_STATE" /> -->
@@ -44,6 +60,16 @@
             android:name=".scheduler.MetricsJobService"
             android:permission="android.permission.BIND_JOB_SERVICE"
             android:exported="false" />
+
+        <!-- Persistent foreground service for the reliability mode. "dataSync" matches the
+             exporter's job: it periodically syncs data to a remote server. On API < 34 the
+             foregroundServiceType attribute is ignored; on API 21 there is no type system
+             at all, so the base <service> element is sufficient. -->
+        <service
+            android:name=".reliability.ExporterForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync"
+            tools:targetApi="29" />
 
         <!-- Boot receiver to re-schedule persisted jobs after reboot -->
         <receiver

@@ -7,8 +7,11 @@ import android.util.Log
 import com.kw.pushgatewayexporter.PushgatewayExporterApp
 
 /**
- * Receives BOOT_COMPLETED broadcast to re-schedule the periodic push job
- * after device reboot, if the user had scheduling enabled.
+ * Receives BOOT_COMPLETED broadcast to re-schedule the periodic push job and, when
+ * enabled, restart the foreground reliability service.
+ *
+ * The heavy lifting lives in [com.kw.pushgatewayexporter.reliability.BootRecoveryCoordinator]
+ * so that boot recovery and cold-start recovery share the same path.
  */
 class BootReceiver : BroadcastReceiver() {
 
@@ -21,14 +24,10 @@ class BootReceiver : BroadcastReceiver() {
 
         try {
             val app = context.applicationContext as? PushgatewayExporterApp ?: return
-            val config = app.configRepository.getConfig()
-
-            if (config.schedulingEnabled && config.persistAcrossReboot) {
-                Log.i(TAG, "Device booted, re-scheduling push job")
-                app.schedulerManager.schedulePeriodicJob(config)
-            }
+            Log.i(TAG, "BOOT_COMPLETED received")
+            app.bootRecoveryCoordinator.runAfterBoot()
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to re-schedule after boot", e)
+            Log.e(TAG, "Boot recovery failed", e)
         }
     }
 }

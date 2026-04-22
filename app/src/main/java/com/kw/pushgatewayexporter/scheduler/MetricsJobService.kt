@@ -106,6 +106,8 @@ class MetricsJobService : JobService() {
         val client = PushgatewayClient(config)
         val result = client.push(payload, instanceId)
         app.configRepository.saveLastPushResult(result)
+        // Heartbeat for reliability self-tests and reminder heuristics.
+        if (result.success) app.reliabilityPreferences.markPushTimestamp()
 
         if (config.logLevel >= 3) {
             if (result.success) {

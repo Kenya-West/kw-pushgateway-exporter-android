@@ -17,5 +17,8 @@ fun AppNavigation() {
         composable("preview") { PreviewScreen(navController) }
         composable("catalog") { MetricCatalogScreen(navController) }
         composable("samples") { SamplesScreen(navController) }
+        composable("reliability") { ReliabilityScreen(navController) }
+        composable("reliability_test") { ReliabilityTestScreen(navController) }
+        composable("diagnostics") { DiagnosticsScreen(navController) }
     }
 }
