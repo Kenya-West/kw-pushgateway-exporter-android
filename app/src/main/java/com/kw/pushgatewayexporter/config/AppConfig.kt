@@ -14,6 +14,7 @@ data class AppConfig(
 
     // Identity and grouping
     val jobName: String = "android_device_exporter",
+    val instanceLabel: String = "instance_id",
     val includeDeviceLabels: Boolean = true,
     val additionalGroupingLabels: Map<String, String> = emptyMap(),
 

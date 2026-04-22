@@ -67,14 +67,17 @@ class PushgatewayClient(private val config: AppConfig) {
 
     /**
      * Build the full Pushgateway URL with grouping key path.
-     * Format: <base>/metrics/job/<job_name>/app_instance/<instance_id>{/extra_label/extra_value}
+     * Format: <base>/metrics/job/<job_name>/<instance_label>/<instance_id>{/extra_label/extra_value}
+     * The instance label name defaults to "instance_id" and is user-configurable.
      */
     fun buildUrl(instanceId: String): String {
         val base = config.pushgatewayUrl.trimEnd('/')
         val sb = StringBuilder(base)
         sb.append("/metrics/job/")
         sb.append(PrometheusSerializer.urlEncodeLabelValue(config.jobName))
-        sb.append("/app_instance/")
+        sb.append('/')
+        sb.append(PrometheusSerializer.urlEncodeLabelValue(sanitizeLabelName(config.instanceLabel)))
+        sb.append('/')
         sb.append(PrometheusSerializer.urlEncodeLabelValue(instanceId))
 
         for ((key, value) in config.additionalGroupingLabels) {
@@ -225,6 +228,19 @@ class PushgatewayClient(private val config: AppConfig) {
                 durationMillis = System.currentTimeMillis() - startTime
             )
         }
+    }
+
+    // Prometheus label names must match [a-zA-Z_][a-zA-Z0-9_]*; fall back to
+    // "instance_id" if the user-supplied value does not.
+    private fun sanitizeLabelName(name: String): String {
+        val trimmed = name.trim()
+        if (trimmed.isEmpty()) return "instance_id"
+        val head = trimmed[0]
+        if (!(head.isLetter() || head == '_')) return "instance_id"
+        for (c in trimmed) {
+            if (!(c.isLetterOrDigit() || c == '_')) return "instance_id"
+        }
+        return trimmed
     }
 
     private fun countMetrics(payload: String): Int {

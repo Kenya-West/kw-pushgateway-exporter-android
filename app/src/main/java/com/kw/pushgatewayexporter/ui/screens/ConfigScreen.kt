@@ -82,6 +82,19 @@ fun ConfigScreen(navController: NavController, viewModel: ConfigViewModel = view
             // --- Identity ---
             item { SectionHeader("Identity") }
             item {
+                OutlinedTextField(
+                    value = config.instanceLabel,
+                    onValueChange = { viewModel.updateConfig { c -> c.copy(instanceLabel = it) } },
+                    label = { Text("Instance label name") },
+                    placeholder = { Text("instance_id") },
+                    supportingText = {
+                        Text("Prometheus label holding the instance UUID in the grouping key. Must match [a-zA-Z_][a-zA-Z0-9_]*.")
+                    },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            item {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text("Instance ID", style = MaterialTheme.typography.bodySmall)

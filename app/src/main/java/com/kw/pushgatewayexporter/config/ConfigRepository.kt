@@ -19,6 +19,8 @@ class ConfigRepository(context: Context) {
         basicAuthPassword = prefs.getString(KEY_AUTH_PASS, "") ?: "",
         insecureTls = prefs.getBoolean(KEY_INSECURE_TLS, false),
         jobName = prefs.getString(KEY_JOB_NAME, "android_device_exporter") ?: "android_device_exporter",
+        instanceLabel = prefs.getString(KEY_INSTANCE_LABEL, "instance_id")
+            ?.takeIf { it.isNotBlank() } ?: "instance_id",
         includeDeviceLabels = prefs.getBoolean(KEY_INCLUDE_DEVICE_LABELS, true),
         schedulingEnabled = prefs.getBoolean(KEY_SCHEDULING_ENABLED, false),
         pushIntervalMinutes = prefs.getInt(KEY_PUSH_INTERVAL, 15),
@@ -57,6 +59,7 @@ class ConfigRepository(context: Context) {
             putString(KEY_AUTH_PASS, config.basicAuthPassword)
             putBoolean(KEY_INSECURE_TLS, config.insecureTls)
             putString(KEY_JOB_NAME, config.jobName)
+            putString(KEY_INSTANCE_LABEL, config.instanceLabel)
             putBoolean(KEY_INCLUDE_DEVICE_LABELS, config.includeDeviceLabels)
             putBoolean(KEY_SCHEDULING_ENABLED, config.schedulingEnabled)
             putInt(KEY_PUSH_INTERVAL, config.pushIntervalMinutes)
@@ -251,6 +254,7 @@ class ConfigRepository(context: Context) {
         private const val KEY_AUTH_PASS = "auth_password"
         private const val KEY_INSECURE_TLS = "insecure_tls"
         private const val KEY_JOB_NAME = "job_name"
+        private const val KEY_INSTANCE_LABEL = "instance_label"
         private const val KEY_INCLUDE_DEVICE_LABELS = "include_device_labels"
         private const val KEY_SCHEDULING_ENABLED = "scheduling_enabled"
         private const val KEY_PUSH_INTERVAL = "push_interval_minutes"
