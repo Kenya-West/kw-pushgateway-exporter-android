@@ -83,7 +83,7 @@ class TrafficCollector(private val context: Context) : Collector {
         type: MetricType,
         value: Long
     ) {
-        if (value != TrafficStats.UNSUPPORTED) {
+        if (value != TrafficStats.UNSUPPORTED.toLong()) {
             families.add(
                 MetricFamily(
                     name = metricName,

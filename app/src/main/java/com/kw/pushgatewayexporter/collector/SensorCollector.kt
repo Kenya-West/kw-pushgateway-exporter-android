@@ -16,6 +16,8 @@ class SensorCollector(private val context: Context) : Collector {
         private const val MAX_SENSORS = 100
     }
 
+    override val name: String = "sensor"
+
     override fun collect(): List<MetricFamily> {
         return try {
             val families = mutableListOf<MetricFamily>()

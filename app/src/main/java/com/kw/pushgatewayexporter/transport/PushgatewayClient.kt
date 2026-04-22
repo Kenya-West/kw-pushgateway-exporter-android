@@ -6,9 +6,10 @@ import com.kw.pushgatewayexporter.config.AppConfig
 import com.kw.pushgatewayexporter.model.PushResult
 import com.kw.pushgatewayexporter.serializer.PrometheusSerializer
 import okhttp3.MediaType
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.RequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
 import java.security.SecureRandom
 import java.security.cert.X509Certificate
@@ -32,8 +33,8 @@ class PushgatewayClient(private val config: AppConfig) {
 
     companion object {
         private const val TAG = "PushgatewayClient"
-        private val MEDIA_TYPE_PROMETHEUS =
-            MediaType.parse("text/plain; version=0.0.4; charset=utf-8")
+        private val MEDIA_TYPE_PROMETHEUS: MediaType? =
+            "text/plain; version=0.0.4; charset=utf-8".toMediaTypeOrNull()
     }
 
     private val client: OkHttpClient by lazy { buildClient() }
@@ -112,7 +113,7 @@ class PushgatewayClient(private val config: AppConfig) {
             }
 
             try {
-                val body = RequestBody.create(MEDIA_TYPE_PROMETHEUS, payload)
+                val body = payload.toRequestBody(MEDIA_TYPE_PROMETHEUS)
                 val requestBuilder = Request.Builder()
                     .url(url)
 
@@ -138,8 +139,8 @@ class PushgatewayClient(private val config: AppConfig) {
                 }
 
                 val response = client.newCall(requestBuilder.build()).execute()
-                lastHttpStatus = response.code()
-                lastResponseBody = response.body()?.string()
+                lastHttpStatus = response.code
+                lastResponseBody = response.body?.string()
 
                 if (response.isSuccessful) {
                     val duration = System.currentTimeMillis() - startTime
@@ -213,8 +214,8 @@ class PushgatewayClient(private val config: AppConfig) {
 
             PushResult(
                 success = response.isSuccessful,
-                httpStatusCode = response.code(),
-                errorMessage = if (!response.isSuccessful) response.body()?.string() else null,
+                httpStatusCode = response.code,
+                errorMessage = if (!response.isSuccessful) response.body?.string() else null,
                 durationMillis = duration
             )
         } catch (e: IOException) {

@@ -3,6 +3,7 @@ package com.kw.pushgatewayexporter.collector
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.LinkProperties
+import android.net.NetworkCapabilities
 import com.kw.pushgatewayexporter.config.AppConfig
 import com.kw.pushgatewayexporter.model.MetricFamily
 import com.kw.pushgatewayexporter.model.MetricSample

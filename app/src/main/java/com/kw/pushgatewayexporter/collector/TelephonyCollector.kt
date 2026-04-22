@@ -15,6 +15,7 @@ class TelephonyCollector(private val context: Context) : Collector {
 
     override val name: String = "telephony"
 
+    @Suppress("DEPRECATION")
     override fun collect(): List<MetricFamily> {
         return try {
             val families = mutableListOf<MetricFamily>()

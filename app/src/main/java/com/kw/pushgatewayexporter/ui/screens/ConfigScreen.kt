@@ -344,7 +344,9 @@ private fun IntervalSelector(currentMinutes: Int, onSelected: (Int) -> Unit) {
             readOnly = true,
             label = { Text("Push interval") },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
-            modifier = Modifier.menuAnchor().fillMaxWidth()
+            modifier = Modifier
+                .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                .fillMaxWidth()
         )
         ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             options.forEach { minutes ->
@@ -374,7 +376,9 @@ private fun LogLevelSelector(currentLevel: Int, onSelected: (Int) -> Unit) {
             readOnly = true,
             label = { Text("Log level") },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
-            modifier = Modifier.menuAnchor().fillMaxWidth()
+            modifier = Modifier
+                .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                .fillMaxWidth()
         )
         ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             levels.forEach { (level, name) ->
