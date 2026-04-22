@@ -13,6 +13,7 @@ fun AppNavigation() {
     NavHost(navController = navController, startDestination = "main") {
         composable("main") { MainScreen(navController) }
         composable("config") { ConfigScreen(navController) }
+        composable("endpoints") { EndpointsScreen(navController) }
         composable("preview") { PreviewScreen(navController) }
         composable("catalog") { MetricCatalogScreen(navController) }
         composable("samples") { SamplesScreen(navController) }

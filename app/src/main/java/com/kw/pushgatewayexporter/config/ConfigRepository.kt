@@ -134,6 +134,115 @@ class ConfigRepository(context: Context) {
     fun getPushAttemptsTotal(): Long = prefs.getLong(KEY_PUSH_ATTEMPTS_TOTAL, 0)
     fun getPushFailuresTotal(): Long = prefs.getLong(KEY_PUSH_FAILURES_TOTAL, 0)
 
+    // --- Endpoint profiles (multi-endpoint support) ---
+
+    fun getEndpoints(): List<EndpointProfile> {
+        val json = prefs.getString(KEY_ENDPOINTS_JSON, null)
+        if (!json.isNullOrBlank()) {
+            return try { EndpointsJson.parse(json) } catch (_: Throwable) { emptyList() }
+        }
+        // Migrate legacy single-config into a default endpoint on first read.
+        val legacyUrl = prefs.getString(KEY_URL, "") ?: ""
+        if (legacyUrl.isBlank()) return emptyList()
+        val migrated = EndpointProfile(
+            name = "Default",
+            url = legacyUrl,
+            username = prefs.getString(KEY_AUTH_USER, "") ?: "",
+            password = prefs.getString(KEY_AUTH_PASS, "") ?: "",
+            insecureTls = prefs.getBoolean(KEY_INSECURE_TLS, false),
+            jobName = prefs.getString(KEY_JOB_NAME, "android_device_exporter")
+                ?: "android_device_exporter"
+        )
+        saveEndpointsInternal(listOf(migrated))
+        prefs.edit().putString(KEY_ACTIVE_ENDPOINT_ID, migrated.id).apply()
+        return listOf(migrated)
+    }
+
+    fun getActiveEndpointId(): String? = prefs.getString(KEY_ACTIVE_ENDPOINT_ID, null)
+
+    fun getActiveEndpoint(): EndpointProfile? {
+        val id = getActiveEndpointId() ?: return null
+        return getEndpoints().firstOrNull { it.id == id }
+    }
+
+    fun setActiveEndpointId(id: String?) {
+        prefs.edit().putString(KEY_ACTIVE_ENDPOINT_ID, id).apply()
+        val ep = id?.let { getEndpoints().firstOrNull { e -> e.id == it } }
+        if (ep != null) applyEndpointToPrefs(ep) else clearConnectionPrefs()
+    }
+
+    fun upsertEndpoint(ep: EndpointProfile) {
+        val list = getEndpoints().toMutableList()
+        val idx = list.indexOfFirst { it.id == ep.id }
+        if (idx >= 0) list[idx] = ep else list += ep
+        saveEndpointsInternal(list)
+        if (getActiveEndpointId() == ep.id) applyEndpointToPrefs(ep)
+        // If there's no active endpoint yet, newly added one becomes active.
+        if (getActiveEndpointId().isNullOrBlank() && list.size == 1) {
+            setActiveEndpointId(ep.id)
+        }
+    }
+
+    fun deleteEndpoint(id: String) {
+        val list = getEndpoints().filterNot { it.id == id }
+        saveEndpointsInternal(list)
+        if (getActiveEndpointId() == id) {
+            setActiveEndpointId(list.firstOrNull()?.id)
+        }
+    }
+
+    fun exportEndpointsJson(): String = EndpointsJson.serialize(getEndpoints())
+
+    /** Returns the count of endpoints imported. */
+    fun importEndpointsJson(json: String, replace: Boolean): Int {
+        val incoming = EndpointsJson.parse(json)
+        val merged = if (replace) {
+            incoming
+        } else {
+            val existing = getEndpoints().toMutableList()
+            val existingIds = existing.mapTo(HashSet()) { it.id }
+            incoming.forEach { ep ->
+                existing += if (ep.id in existingIds) {
+                    ep.copy(id = java.util.UUID.randomUUID().toString())
+                } else ep
+            }
+            existing
+        }
+        saveEndpointsInternal(merged)
+        if (replace) {
+            // Reset active to the first imported endpoint (or clear).
+            setActiveEndpointId(merged.firstOrNull()?.id)
+        } else if (getActiveEndpointId().isNullOrBlank() && merged.isNotEmpty()) {
+            setActiveEndpointId(merged.first().id)
+        }
+        return incoming.size
+    }
+
+    private fun saveEndpointsInternal(endpoints: List<EndpointProfile>) {
+        prefs.edit().putString(KEY_ENDPOINTS_JSON, EndpointsJson.serialize(endpoints)).apply()
+    }
+
+    private fun applyEndpointToPrefs(ep: EndpointProfile) {
+        prefs.edit().apply {
+            putString(KEY_URL, ep.url)
+            putString(KEY_AUTH_USER, ep.username)
+            putString(KEY_AUTH_PASS, ep.password)
+            putBoolean(KEY_INSECURE_TLS, ep.insecureTls)
+            putString(KEY_JOB_NAME, ep.jobName)
+            apply()
+        }
+    }
+
+    private fun clearConnectionPrefs() {
+        prefs.edit().apply {
+            putString(KEY_URL, "")
+            putString(KEY_AUTH_USER, "")
+            putString(KEY_AUTH_PASS, "")
+            putBoolean(KEY_INSECURE_TLS, false)
+            apply()
+        }
+    }
+
     companion object {
         private const val PREFS_NAME = "pushgateway_exporter_prefs"
 
@@ -183,5 +292,8 @@ class ConfigRepository(context: Context) {
         private const val KEY_LAST_FAILURE_TIME = "last_failure_time"
         private const val KEY_PUSH_ATTEMPTS_TOTAL = "push_attempts_total"
         private const val KEY_PUSH_FAILURES_TOTAL = "push_failures_total"
+
+        private const val KEY_ENDPOINTS_JSON = "endpoints_json"
+        private const val KEY_ACTIVE_ENDPOINT_ID = "active_endpoint_id"
     }
 }

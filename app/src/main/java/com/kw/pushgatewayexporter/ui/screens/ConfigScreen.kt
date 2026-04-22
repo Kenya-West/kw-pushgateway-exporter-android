@@ -6,13 +6,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.kw.pushgatewayexporter.config.EndpointProfile
 import com.kw.pushgatewayexporter.ui.viewmodel.ConfigViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -20,7 +20,12 @@ import com.kw.pushgatewayexporter.ui.viewmodel.ConfigViewModel
 fun ConfigScreen(navController: NavController, viewModel: ConfigViewModel = viewModel()) {
     val config by viewModel.config.collectAsState()
     val saveMessage by viewModel.saveMessage.collectAsState()
+    val endpoints by viewModel.endpoints.collectAsState()
+    val activeEndpointId by viewModel.activeEndpointId.collectAsState()
     var instanceId by remember { mutableStateOf(viewModel.getInstanceId()) }
+
+    // Refresh endpoint list when returning from EndpointsScreen.
+    LaunchedEffect(Unit) { viewModel.loadConfig() }
 
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -63,54 +68,19 @@ fun ConfigScreen(navController: NavController, viewModel: ConfigViewModel = view
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // --- Connection ---
-            item { SectionHeader("Connection") }
+            // --- Endpoint ---
+            item { SectionHeader("Pushgateway Endpoint") }
             item {
-                OutlinedTextField(
-                    value = config.pushgatewayUrl,
-                    onValueChange = { viewModel.updateConfig { c -> c.copy(pushgatewayUrl = it) } },
-                    label = { Text("Pushgateway URL") },
-                    placeholder = { Text("https://pushgateway.example.com") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                EndpointPicker(
+                    endpoints = endpoints,
+                    activeId = activeEndpointId,
+                    onSelect = { viewModel.setActiveEndpoint(it) },
+                    onManage = { navController.navigate("endpoints") }
                 )
-            }
-            item {
-                OutlinedTextField(
-                    value = config.basicAuthUsername,
-                    onValueChange = { viewModel.updateConfig { c -> c.copy(basicAuthUsername = it) } },
-                    label = { Text("Username (optional)") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-            item {
-                OutlinedTextField(
-                    value = config.basicAuthPassword,
-                    onValueChange = { viewModel.updateConfig { c -> c.copy(basicAuthPassword = it) } },
-                    label = { Text("Password (optional)") },
-                    singleLine = true,
-                    visualTransformation = PasswordVisualTransformation(),
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-            item {
-                SwitchRow("Insecure TLS (test only)", config.insecureTls) {
-                    viewModel.updateConfig { c -> c.copy(insecureTls = it) }
-                }
             }
 
             // --- Identity ---
             item { SectionHeader("Identity") }
-            item {
-                OutlinedTextField(
-                    value = config.jobName,
-                    onValueChange = { viewModel.updateConfig { c -> c.copy(jobName = it) } },
-                    label = { Text("Job Name") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
             item {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Column(modifier = Modifier.weight(1f)) {
@@ -390,6 +360,90 @@ private fun LogLevelSelector(currentLevel: Int, onSelected: (Int) -> Unit) {
                     }
                 )
             }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun EndpointPicker(
+    endpoints: List<EndpointProfile>,
+    activeId: String?,
+    onSelect: (String) -> Unit,
+    onManage: () -> Unit
+) {
+    val active = endpoints.firstOrNull { it.id == activeId }
+    var expanded by remember { mutableStateOf(false) }
+
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        if (endpoints.isEmpty()) {
+            OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Text(
+                        "No endpoints configured yet.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Text(
+                        "Tap \"Manage endpoints\" to add one or import a JSON file.",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+        } else {
+            ExposedDropdownMenuBox(
+                expanded = expanded,
+                onExpandedChange = { expanded = it }
+            ) {
+                OutlinedTextField(
+                    value = active?.name?.ifBlank { "(unnamed)" } ?: "— select endpoint —",
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Active endpoint") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+                    modifier = Modifier
+                        .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                        .fillMaxWidth()
+                )
+                ExposedDropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false }
+                ) {
+                    endpoints.forEach { ep ->
+                        DropdownMenuItem(
+                            text = {
+                                Column {
+                                    Text(ep.name.ifBlank { "(unnamed)" })
+                                    Text(
+                                        ep.url,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontFamily = FontFamily.Monospace,
+                                        maxLines = 1
+                                    )
+                                }
+                            },
+                            onClick = {
+                                onSelect(ep.id)
+                                expanded = false
+                            }
+                        )
+                    }
+                }
+            }
+            if (active != null) {
+                Text(
+                    active.url,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontFamily = FontFamily.Monospace,
+                    modifier = Modifier.padding(start = 4.dp)
+                )
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            TextButton(onClick = onManage) { Text("Manage endpoints") }
         }
     }
 }

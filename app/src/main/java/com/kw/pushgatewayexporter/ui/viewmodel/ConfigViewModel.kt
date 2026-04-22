@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import com.kw.pushgatewayexporter.PushgatewayExporterApp
 import com.kw.pushgatewayexporter.config.AppConfig
+import com.kw.pushgatewayexporter.config.EndpointProfile
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -17,12 +18,31 @@ class ConfigViewModel(application: Application) : AndroidViewModel(application) 
     private val _saveMessage = MutableStateFlow<String?>(null)
     val saveMessage: StateFlow<String?> = _saveMessage.asStateFlow()
 
+    private val _endpoints = MutableStateFlow<List<EndpointProfile>>(emptyList())
+    val endpoints: StateFlow<List<EndpointProfile>> = _endpoints.asStateFlow()
+
+    private val _activeEndpointId = MutableStateFlow<String?>(null)
+    val activeEndpointId: StateFlow<String?> = _activeEndpointId.asStateFlow()
+
     init {
         loadConfig()
     }
 
     fun loadConfig() {
+        _endpoints.value = app.configRepository.getEndpoints()
+        _activeEndpointId.value = app.configRepository.getActiveEndpointId()
+        // getConfig() reads connection fields that are kept in sync with the active endpoint.
         _config.value = app.configRepository.getConfig()
+    }
+
+    fun setActiveEndpoint(id: String) {
+        app.configRepository.setActiveEndpointId(id)
+        val cfg = app.configRepository.getConfig()
+        if (cfg.schedulingEnabled && cfg.isConfigured) {
+            app.schedulerManager.schedulePeriodicJob(cfg)
+        }
+        loadConfig()
+        _saveMessage.value = "Active endpoint updated"
     }
 
     fun updateConfig(transform: (AppConfig) -> AppConfig) {
