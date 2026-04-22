@@ -17,8 +17,20 @@ object PrometheusSerializer {
      */
     fun serialize(families: List<MetricFamily>): String {
         val sb = StringBuilder()
+        // Merge families that share a name so HELP/TYPE are emitted once per metric.
+        val merged = families
+            .groupBy { it.name }
+            .map { (_, group) ->
+                val first = group.first()
+                MetricFamily(
+                    name = first.name,
+                    help = first.help,
+                    type = first.type,
+                    samples = group.flatMap { it.samples }
+                )
+            }
         // Sort families by name for deterministic output
-        val sorted = families.sortedBy { it.name }
+        val sorted = merged.sortedBy { it.name }
         for (family in sorted) {
             sb.append("# HELP ").append(family.name).append(' ')
                 .append(escapeHelp(family.help)).append('\n')
