@@ -15,6 +15,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import com.kw.pushgatewayexporter.ui.theme.StatusError
 import com.kw.pushgatewayexporter.ui.theme.StatusSuccess
 import com.kw.pushgatewayexporter.ui.viewmodel.MainViewModel
@@ -25,8 +27,40 @@ import java.util.*
 @Composable
 fun MainScreen(navController: NavController, viewModel: MainViewModel = viewModel()) {
     val state by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+    var showTlsDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) { viewModel.refreshState() }
+
+    // Auto-open dialog the first time a TLS trust-anchor error appears.
+    LaunchedEffect(state.hasTlsTrustAnchorError, state.lastPushResult?.timestampMillis) {
+        if (state.hasTlsTrustAnchorError) showTlsDialog = true
+    }
+
+    // Launch the system cert installer once the cert is downloaded + verified.
+    LaunchedEffect(state.pendingCertInstallIntent) {
+        val intent = state.pendingCertInstallIntent ?: return@LaunchedEffect
+        (context as? Activity)?.startActivity(intent)
+        viewModel.consumePendingCertInstallIntent()
+        showTlsDialog = false
+    }
+
+    if (showTlsDialog) {
+        TlsErrorDialog(
+            insecureTlsEnabled = state.insecureTlsEnabled,
+            inProgress = state.tlsFixInProgress,
+            message = state.tlsFixMessage,
+            onEnableInsecure = {
+                viewModel.enableInsecureTls()
+                showTlsDialog = false
+            },
+            onInstallCert = { viewModel.prepareLetsEncryptCertInstall() },
+            onDismiss = {
+                viewModel.clearTlsFixMessage()
+                showTlsDialog = false
+            }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -122,6 +156,14 @@ fun MainScreen(navController: NavController, viewModel: MainViewModel = viewMode
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.error
                             )
+                        }
+                        if (state.hasTlsTrustAnchorError) {
+                            Spacer(Modifier.height(8.dp))
+                            OutlinedButton(onClick = { showTlsDialog = true }) {
+                                Icon(Icons.Default.Lock, contentDescription = null)
+                                Spacer(Modifier.width(4.dp))
+                                Text("Fix TLS error")
+                            }
                         }
                     } else {
                         Text("No pushes yet", style = MaterialTheme.typography.bodyMedium)
@@ -225,6 +267,85 @@ private fun formatTimestamp(millis: Long): String {
     if (millis <= 0) return "—"
     val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
     return sdf.format(Date(millis))
+}
+
+@Composable
+private fun TlsErrorDialog(
+    insecureTlsEnabled: Boolean,
+    inProgress: Boolean,
+    message: String?,
+    onEnableInsecure: () -> Unit,
+    onInstallCert: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = { if (!inProgress) onDismiss() },
+        icon = { Icon(Icons.Default.Lock, contentDescription = null) },
+        title = { Text("TLS certificate error") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    "The push failed because the device could not validate the " +
+                        "Pushgateway's TLS certificate chain."
+                )
+                Text(
+                    "This usually means the server uses a Let's Encrypt certificate " +
+                        "that chains to the ISRG Root X1 root CA. Android versions " +
+                        "older than 7.1.1 do not ship this root, so the chain is " +
+                        "untrusted out of the box.",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                Text("You have two options:", fontWeight = FontWeight.Bold)
+                Text(
+                    "1. Install the Let's Encrypt root CA (ISRG Root X1) into " +
+                        "Android's user certificate store. The app will download it " +
+                        "from letsencrypt.org, verify its SHA-256 fingerprint, and " +
+                        "hand it to the system installer. You may be prompted to set " +
+                        "a screen lock.",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                Text(
+                    "2. Disable TLS validation for this endpoint (insecure — use " +
+                        "only on trusted LANs or test environments).",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                if (message != null) {
+                    Text(
+                        message,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+                if (inProgress) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp), strokeWidth = 2.dp
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text("Working…", style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onInstallCert, enabled = !inProgress) {
+                Text("Install root CA")
+            }
+        },
+        dismissButton = {
+            Column(horizontalAlignment = Alignment.End) {
+                TextButton(
+                    onClick = onEnableInsecure,
+                    enabled = !inProgress && !insecureTlsEnabled
+                ) {
+                    Text(if (insecureTlsEnabled) "Insecure TLS on" else "Disable TLS check")
+                }
+                TextButton(onClick = onDismiss, enabled = !inProgress) {
+                    Text("Cancel")
+                }
+            }
+        }
+    )
 }
 
 private fun formatBytes(bytes: Int): String {

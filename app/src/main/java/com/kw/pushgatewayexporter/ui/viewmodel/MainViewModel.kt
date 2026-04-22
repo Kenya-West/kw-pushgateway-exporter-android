@@ -10,7 +10,9 @@ import com.kw.pushgatewayexporter.model.MetricSample
 import com.kw.pushgatewayexporter.model.MetricType
 import com.kw.pushgatewayexporter.model.PushResult
 import com.kw.pushgatewayexporter.serializer.PrometheusSerializer
+import com.kw.pushgatewayexporter.tls.TlsErrorHelper
 import com.kw.pushgatewayexporter.transport.PushgatewayClient
+import android.content.Intent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -35,7 +37,12 @@ data class MainUiState(
     val previewPayload: String? = null,
     val previewUrl: String? = null,
     val previewMetricsCount: Int = 0,
-    val previewPayloadSize: Int = 0
+    val previewPayloadSize: Int = 0,
+    val hasTlsTrustAnchorError: Boolean = false,
+    val insecureTlsEnabled: Boolean = false,
+    val tlsFixInProgress: Boolean = false,
+    val tlsFixMessage: String? = null,
+    val pendingCertInstallIntent: Intent? = null
 )
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
@@ -51,7 +58,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun refreshState() {
         val config = app.configRepository.getConfig()
         val lastResult = app.configRepository.getLastPushResult()
-        _uiState.value = MainUiState(
+        val hasTlsError = lastResult != null && !lastResult.success &&
+            TlsErrorHelper.isTrustAnchorError(lastResult.errorMessage)
+        _uiState.value = _uiState.value.copy(
             isConfigured = config.isConfigured,
             pushgatewayUrl = config.pushgatewayUrl,
             jobName = config.jobName,
@@ -64,8 +73,55 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             lastSuccessTime = app.configRepository.getLastSuccessTime(),
             lastFailureTime = app.configRepository.getLastFailureTime(),
             pushAttemptsTotal = app.configRepository.getPushAttemptsTotal(),
-            pushFailuresTotal = app.configRepository.getPushFailuresTotal()
+            pushFailuresTotal = app.configRepository.getPushFailuresTotal(),
+            hasTlsTrustAnchorError = hasTlsError,
+            insecureTlsEnabled = config.insecureTls
         )
+    }
+
+    /** Flip the active config's insecureTls flag to true and persist. */
+    fun enableInsecureTls() {
+        val config = app.configRepository.getConfig()
+        app.configRepository.saveConfig(config.copy(insecureTls = true))
+        refreshState()
+    }
+
+    /**
+     * Download ISRG Root X1, verify fingerprint, and prepare the install intent.
+     * The UI observes [MainUiState.pendingCertInstallIntent] and launches it.
+     */
+    fun prepareLetsEncryptCertInstall() {
+        if (_uiState.value.tlsFixInProgress) return
+        _uiState.value = _uiState.value.copy(
+            tlsFixInProgress = true,
+            tlsFixMessage = "Downloading ISRG Root X1…",
+            pendingCertInstallIntent = null
+        )
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val bytes = TlsErrorHelper.downloadIsrgRootX1()
+                val intent = TlsErrorHelper.buildInstallIntent(bytes)
+                _uiState.value = _uiState.value.copy(
+                    tlsFixInProgress = false,
+                    tlsFixMessage = null,
+                    pendingCertInstallIntent = intent
+                )
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    tlsFixInProgress = false,
+                    tlsFixMessage = "Failed: ${e.message}",
+                    pendingCertInstallIntent = null
+                )
+            }
+        }
+    }
+
+    fun consumePendingCertInstallIntent() {
+        _uiState.value = _uiState.value.copy(pendingCertInstallIntent = null)
+    }
+
+    fun clearTlsFixMessage() {
+        _uiState.value = _uiState.value.copy(tlsFixMessage = null)
     }
 
     fun pushNow() {

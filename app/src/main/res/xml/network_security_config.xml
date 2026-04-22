@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Trust user-installed CAs on API 24+.
+  On API < 24 user CAs are trusted by default, so this file has no effect there.
+  This lets the Pushgateway TLS chain validate after the user installs a
+  missing root CA (e.g. ISRG Root X1) via the "Fix TLS error" flow.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>
