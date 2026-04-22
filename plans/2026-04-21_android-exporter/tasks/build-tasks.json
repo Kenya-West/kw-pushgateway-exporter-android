@@ -22,11 +22,11 @@
   {
     "content": "[ui] Compose UI screens, viewmodels, navigation, theme",
     "id": "5",
-    "status": "in_progress"
+    "status": "completed"
   },
   {
     "content": "[finalize] Git commit, verify build, test plan",
     "id": "6",
-    "status": "pending"
+    "status": "completed"
   }
 ]
