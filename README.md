@@ -1,4 +1,4 @@
-# 📱 Android Prometheus Pushgateway Exporter
+# Android Prometheus Pushgateway Exporter
 
 ![API](https://img.shields.io/badge/API-21%2B-brightgreen.svg?style=flat)
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.0.21-blue.svg?style=flat)
@@ -33,7 +33,7 @@ Credits: Claude Opus 4.7 (and probably me)
   - Self-metrics (push duration, payload size, failure rates)
 - **Strict Privacy Controls:** Does *not* extract or depend on proprietary IDs (IMEI, IMSI, or MAC tracking). Sensitive network info (SSIDs, BSSIDs, IPs, DNS) are hard-gated by strict opt-in user configurations. Generates its own application UUID for safely tracking app instances.
 
-## 🏗 Architecture
+## Architecture
 
 The app is built as a sequential processing pipeline driven by background jobs or standard UI interaction:
 
@@ -67,7 +67,7 @@ gradle wrapper
 ./gradlew :app:lint
 ```
 
-## 🔌 API Contract
+## API Contract
 
 - **Minimum SDK (minSdk):** API 21 (Android 5.0 Lollipop).
 - **Target / Compile SDK:** API 34.
