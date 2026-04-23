@@ -5,6 +5,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Launch
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -239,7 +240,7 @@ private fun StepCard(
                 if (step.candidates.isNotEmpty() || step.id ==
                     com.kw.pushgatewayexporter.reliability.ReliabilityChecklist.ID_BATTERY_OPT) {
                     OutlinedButton(onClick = onOpenSettings) {
-                        Icon(Icons.Default.Launch, contentDescription = null)
+                        Icon(Icons.AutoMirrored.Filled.Launch, contentDescription = null)
                         Spacer(Modifier.width(4.dp))
                         Text("Open settings")
                     }

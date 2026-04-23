@@ -172,7 +172,7 @@ class ExporterForegroundService : Service() {
             return builder
                 .setContentTitle("Pushgateway Exporter active")
                 .setContentText(status)
-                .setSmallIcon(R.mipmap.ic_launcher)
+                .setSmallIcon(R.drawable.ic_exporter_notification)
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
                 .setContentIntent(pi)
