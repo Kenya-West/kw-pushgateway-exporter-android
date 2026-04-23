@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "kw-pushgateway-exporter"
+rootProject.name = "kw-pushgateway-exporter-android"
 include(":app")
