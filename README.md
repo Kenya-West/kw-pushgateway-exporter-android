@@ -13,6 +13,10 @@ Prometheus then scrapes the Pushgateway (designed for `honor_labels: true`), cre
 
 ---
 
+⚠️ Uwaga! Warning! Be careful as this app is a vibe-coded one designed to accomplish one single task: pushing device metrics to a Prometheus PushGateway.
+
+Credits: Claude Opus 4.7 (and probably me)
+
 ## Features
 
 - **Push-Model Architecture:** Securely pushes metrics outward instead of requiring incoming network exposure.
